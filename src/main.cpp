@@ -85,11 +85,17 @@ private:
         CURLcode result  = curl_easy_perform(curl);
         // Handle errors
         if(result != CURLE_OK){
-            spdlog::error("[ Shortwave Station List ] Failed to download list!");
+            errorLoading = true;
+            spdlog::error("[ Shortwave Station List ] Failed to load {}",url);
         }
 
         // Once the list is download decode the json
-        const auto database = json::parse(list);
+        nlohmann::json database = nullptr;
+        try{
+            database = json::parse(list);
+        }catch(nlohmann::json::parse_error){
+            errorLoading = true;
+        }
         for( const auto station : database["stations"] ){
             Station s;
             s.frequency = station["frequency"].get<int>();
@@ -107,6 +113,24 @@ private:
     static void menuHandler(void *ctx)
     {
         ShortwaveStationList * _this = (ShortwaveStationList *)ctx;
+        ImGui::Text("%i frequencies loaded", (int)_this->stations.size());
+        if(_this->errorLoading)
+        {
+            ImGui::OpenPopup("Failed to download database!");
+        }
+        ImGui::SetNextWindowSize(ImVec2(600,200));
+        if (ImGui::BeginPopupModal("Failed to download database!", &_this->errorLoading, ImGuiWindowFlags_NoMove))
+        {
+            ImGui::TextColored(ImVec4(1, 0.2, 0.2, 1) ,"Failed to download database!");
+            ImGui::Text("1. Check your network connection");
+            ImGui::Text("2. Check you are using an up to date plugin");
+            if(ImGui::Button("Close", ImVec2(ImGui::GetContentRegionAvail().x,0)))
+            {
+                _this->errorLoading = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
     }
     static void fftRedraw(ImGui::WaterFall::FFTRedrawArgs args, void *ctx)
     {
@@ -175,6 +199,7 @@ private:
     bool enabled = true;
     EventHandler<ImGui::WaterFall::FFTRedrawArgs> fftRedrawHandler;
     std::unordered_map<int, std::vector<Station>> stations;
+    bool errorLoading = false;
 };
 
 MOD_EXPORT void _INIT_()
