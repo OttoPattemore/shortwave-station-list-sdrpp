@@ -37,40 +37,7 @@ public:
         gui::waterfall.onFFTRedraw.bindHandler(&fftRedrawHandler);
 
         
-        CURL* curl = curl_easy_init();
-
-        if(!curl){
-            spdlog::error("[ Shortwave Station List ] Failed to init curl!");
-            return;
-        }
-
-        // Download data
-        curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8000/sw.json");
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ShortwaveStationList::handleData);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
-        CURLcode result  = curl_easy_perform(curl);
-
-        // Handle errors
-        if(result != CURLE_OK){
-            spdlog::error("[ Shortwave Station List ] Failed to download list!");
-        }
-
-        // Once the list is download decode the json
-        const auto database = json::parse(downloadedData);
-        for( const auto station : database["stations"] ){
-            Station s;
-            s.frequency = station["frequency"].get<int>();
-            s.name = station["name"];
-            s.power = station["power"].get<int>();
-            s.notes = station["notes"];
-            s.lat = station["location"][0].get<float>();
-            s.lon = station["location"][1].get<float>();
-            stations[s.frequency].push_back(s);
-        }
-
-        // Cleanup
-        curl_easy_cleanup(curl);
-        spdlog::info("[ Shortwave Station List ] Downloaded station list!");
+        loadList("https://localhost:8000/db/eibi.json");
     }
 
     ~ShortwaveStationList()
@@ -93,15 +60,49 @@ public:
     }
 
 private:
-    static size_t handleData(char *buffer, size_t itemSize, size_t nitems, void * ctx)
-    {
-        ShortwaveStationList *_this = (ShortwaveStationList *)ctx;
-        size_t bytes = itemSize * nitems;
-        std::string data;
-        data.resize(bytes);
-        memcpy(data.data(), buffer,bytes);
-        _this->downloadedData.append(data);
-        return bytes;
+    void loadList(std::string url){
+        std::string list;
+
+        CURL *curl = curl_easy_init();
+        if (!curl)
+        {
+            spdlog::error("[ Shortwave Station List ] Failed to init curl!");
+            return;
+        }
+        // Download data
+        curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8000/db/eibi.json");
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &list);
+        size_t (*handler)(char *buffer, size_t itemSize, size_t nitems, void *ctx) = [](char *buffer, size_t itemSize, size_t nitems, void *ctx) -> size_t
+        {
+            std::cout<<itemSize*nitems<<std::endl;
+            size_t bytes = itemSize * nitems;
+            std::string data;
+            data.resize(bytes);
+            memcpy(data.data(), buffer,bytes);
+            ((std::string*)ctx)->append(data);
+            return bytes; };
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handler);
+        CURLcode result  = curl_easy_perform(curl);
+        // Handle errors
+        if(result != CURLE_OK){
+            spdlog::error("[ Shortwave Station List ] Failed to download list!");
+        }
+
+        // Once the list is download decode the json
+        const auto database = json::parse(list);
+        for( const auto station : database["stations"] ){
+            Station s;
+            s.frequency = station["frequency"].get<int>();
+            s.name = station["name"];
+            s.power = station["power"].get<int>();
+            s.notes = station["notes"];
+            s.lat = station["location"][0].get<float>();
+            s.lon = station["location"][1].get<float>();
+            stations[s.frequency].push_back(s);
+        }
+
+        // Cleanup
+        curl_easy_cleanup(curl);
     }
     static void menuHandler(void *ctx)
     {
@@ -173,9 +174,6 @@ private:
     std::string name;
     bool enabled = true;
     EventHandler<ImGui::WaterFall::FFTRedrawArgs> fftRedrawHandler;
-
-    // Station data
-    std::string downloadedData;
     std::unordered_map<int, std::vector<Station>> stations;
 };
 
