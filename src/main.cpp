@@ -9,6 +9,7 @@
 #include <curl/curl.h>
 #include <iostream>
 #include <json.hpp>
+#include <config.h>
 
 SDRPP_MOD_INFO{
     /* Name:            */ "Shortwave Staton List",
@@ -24,7 +25,28 @@ struct Station{
     int frequency;
     float lat;
     float lon;
+    int utcMin;
+    int utcMax;
 };
+ConfigManager config;
+float getUTCTime()
+{
+    std::time_t now = std::time(0);
+    std::tm *now_tm = std::gmtime(&now);
+    return now_tm->tm_min + (now_tm->tm_hour * 100);
+}
+int getUTCHour()
+{
+    std::time_t now = std::time(0);
+    std::tm *now_tm = std::gmtime(&now);
+    return now_tm->tm_hour;
+}
+int getUTCMin()
+{
+    std::time_t now = std::time(0);
+    std::tm *now_tm = std::gmtime(&now);
+    return now_tm->tm_min;
+}
 class ShortwaveStationList : public ModuleManager::Instance
 {
 public:
@@ -36,10 +58,19 @@ public:
         fftRedrawHandler.handler = fftRedraw;
         gui::waterfall.onFFTRedraw.bindHandler(&fftRedrawHandler);
 
-        
-        loadList("https://localhost:8000/db/eibi.json");
-    }
+        // Load config
+        config.acquire();
+        config.conf["test"] = "HIHI";
+        config.release(true);
 
+        loadDatabase();
+    }
+    void loadDatabase()
+    {
+        stations.clear();
+        std::string url = useLocalHost ? "http://localhost:8000/" : "http://ottopattemore.github.io/shortwave-station-list/";
+        loadList(url + "/db/eibi.json");
+    }
     ~ShortwaveStationList()
     {
     }
@@ -70,7 +101,7 @@ private:
             return;
         }
         // Download data
-        curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:8000/db/eibi.json");
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &list);
         size_t (*handler)(char *buffer, size_t itemSize, size_t nitems, void *ctx) = [](char *buffer, size_t itemSize, size_t nitems, void *ctx) -> size_t
         {
@@ -104,17 +135,33 @@ private:
             s.notes = station["notes"];
             s.lat = station["location"][0].get<float>();
             s.lon = station["location"][1].get<float>();
+            s.utcMin = std::stof(station["utc_start"].get<std::string>());
+            s.utcMax = std::stof(station["utc_end"].get<std::string>());
             stations[s.frequency].push_back(s);
         }
-
         // Cleanup
         curl_easy_cleanup(curl);
     }
     static void menuHandler(void *ctx)
     {
         ShortwaveStationList * _this = (ShortwaveStationList *)ctx;
-        ImGui::Text("%i frequencies loaded", (int)_this->stations.size());
-        if(_this->errorLoading)
+        ImGui::TextColored(ImVec4(0.5,0.9,0.5,1),"Current UTC Time: %02i:%02i", getUTCHour(),getUTCMin());
+        ImGui::Checkbox("Display on FFT", &_this->showStations);
+        if (ImGui::BeginCombo("Source", _this->useLocalHost ? "Local Host ( For testing )" : "Remote ( Default )"))
+        {
+            if (ImGui::Selectable("Remote ( Default )"))
+            {
+                _this->useLocalHost = false;
+                _this->loadDatabase();
+            }
+            if (ImGui::Selectable("Local Host ( For testing )"))
+            {
+                _this->useLocalHost = true;
+                _this->loadDatabase();
+            }
+            ImGui::EndCombo();
+        }
+        if (_this->errorLoading)
         {
             ImGui::OpenPopup("Failed to download database!");
         }
@@ -135,6 +182,7 @@ private:
     static void fftRedraw(ImGui::WaterFall::FFTRedrawArgs args, void *ctx)
     {
         ShortwaveStationList *_this = (ShortwaveStationList *)ctx;
+        if (!_this->showStations) return;
         std::function<void(std::string name, int freq, std::function<void()> tooltip)> draw = [&args](std::string name, int freq, std::function<void()> tooltip)
         {
             double centerXpos = args.min.x + std::round((freq - args.lowFreq) * args.freqToPixelRatio);
@@ -178,23 +226,39 @@ private:
             }
         };
         for(const auto& f : _this->stations){
-
             const auto frequency = f.first;
-            const auto stations = f.second;
-            // Closest station should be displayed
-            std::string text = stations[0].name;
+            auto stations = f.second;
 
-            if( stations.size() > 1 ){
-                text += " and " + std::to_string(stations.size() - 1) + " others";
-            }
-            draw(text, frequency*1000,[stations](){
-                ImGui::Text("Live stations:");
-                for(const auto station : stations){
-                    ImGui::Text("%s",station.name.c_str());
+            //TODO: This isn't a great way of doing it
+            std::vector<Station> liveStations;
+
+            for(const auto station : stations){
+
+                // Check time
+                if ( (getUTCTime() > station.utcMin) && (getUTCTime() < station.utcMax) ){
+                    liveStations.push_back(station);
                 }
-            });
+            }
+
+            // There are no live stations
+            if(!liveStations.size()) continue;
+
+            const std::string text = liveStations[0].name;
+            draw(text, frequency * 1000, [&liveStations,frequency]()
+                {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.5,0.5,1,1), "Live stations on %ikHz:", frequency);
+                    for (const auto station : liveStations)
+                    {
+                        ImGui::Text("%s\t[%i - %i]\t%ikm", station.name.c_str(), station.utcMin, station.utcMax, 0);
+                    }
+                    ImGui::Separator();
+                }
+            );
         }
     }
+    bool useLocalHost = false;
+    bool showStations = true;
     std::string name;
     bool enabled = true;
     EventHandler<ImGui::WaterFall::FFTRedrawArgs> fftRedrawHandler;
@@ -204,7 +268,10 @@ private:
 
 MOD_EXPORT void _INIT_()
 {
-    // Nothing
+    json def = json({});
+    config.setPath(core::args["root"].s() + "/shortwave_station_list.json");
+    config.load(def);
+    config.enableAutoSave();
 }
 
 MOD_EXPORT ModuleManager::Instance *_CREATE_INSTANCE_(std::string name)
