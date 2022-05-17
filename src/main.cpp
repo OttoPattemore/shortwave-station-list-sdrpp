@@ -57,18 +57,12 @@ public:
         fftRedrawHandler.ctx = this;
         fftRedrawHandler.handler = fftRedraw;
         gui::waterfall.onFFTRedraw.bindHandler(&fftRedrawHandler);
-
-        // Load config
-        config.acquire();
-        config.conf["test"] = "HIHI";
-        config.release(true);
-
         loadDatabase();
     }
     void loadDatabase()
     {
         stations.clear();
-        std::string url = useLocalHost ? "http://localhost:8000/" : "http://ottopattemore.github.io/shortwave-station-list/";
+        std::string url = useLocalHost ? "http://localhost:8000/" : "https://ottopattemore.github.io/shortwave-station-list/";
         loadList(url + "/db/eibi.json");
     }
     ~ShortwaveStationList()
@@ -139,6 +133,7 @@ private:
             s.utcMax = std::stof(station["utc_end"].get<std::string>());
             stations[s.frequency].push_back(s);
         }
+        spdlog::info("Fetch list: {}", url);
         // Cleanup
         curl_easy_cleanup(curl);
     }
