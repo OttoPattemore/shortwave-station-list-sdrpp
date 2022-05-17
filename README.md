@@ -3,9 +3,17 @@ A plugin for SDR++ to display stations from shortwave-station-list
 
 ![Screen Shot](screenshot.png)
 
+You can find the repository for the database [here](https://github.com/OttoPattemore/shortwave-station-list).
+
 ## Setup
 ### Linux
 Currently this is a little tricky but it is do-able.
+
+
+Dependencies:
+```bash
+sudo apt install libcurl4-openssl-dev
+```
 
 You will need to have compiled SDR++ from source to compile the plugin.  Once you have done that point cmake to the SDR++ code.
 ```bash
@@ -39,3 +47,6 @@ After the last module on the list add the path of the plugin you just compiled.
     ],
 ```
 Start SDR++, the plugin should now be installed.
+
+### Windows
+TODO
