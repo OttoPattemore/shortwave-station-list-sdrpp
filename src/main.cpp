@@ -10,7 +10,7 @@
 #include <iostream>
 #include <json.hpp>
 #include <config.h>
-
+#include "utc.h"
 SDRPP_MOD_INFO{
     /* Name:            */ "Shortwave Staton List",
     /* Description:     */ "Plugin to show data from shortwave-station-list in SDR++",
@@ -29,24 +29,6 @@ struct Station{
     int utcMax;
 };
 ConfigManager config;
-float getUTCTime()
-{
-    std::time_t now = std::time(0);
-    std::tm *now_tm = std::gmtime(&now);
-    return now_tm->tm_min + (now_tm->tm_hour * 100);
-}
-int getUTCHour()
-{
-    std::time_t now = std::time(0);
-    std::tm *now_tm = std::gmtime(&now);
-    return now_tm->tm_hour;
-}
-int getUTCMin()
-{
-    std::time_t now = std::time(0);
-    std::tm *now_tm = std::gmtime(&now);
-    return now_tm->tm_min;
-}
 
 struct Settings
 {
