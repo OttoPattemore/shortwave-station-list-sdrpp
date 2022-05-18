@@ -11,6 +11,7 @@
 #include <json.hpp>
 #include <config.h>
 #include "utc.h"
+#include "distance.h"
 SDRPP_MOD_INFO{
     /* Name:            */ "Shortwave Staton List",
     /* Description:     */ "Plugin to show data from shortwave-station-list in SDR++",
@@ -35,7 +36,7 @@ struct Settings
     bool useLocalHost = false;
     bool showStations = true;
 
-    bool calculateDistances;
+    bool calculateDistances = false;
     float lat = 0;
     float lon = 0;
 };
@@ -148,6 +149,22 @@ private:
             }
             ImGui::EndCombo();
         }
+        if(ImGui::TreeNode("Location"))
+        {
+            ImGui::Checkbox("Calculate distances to station", &_this->settings.calculateDistances);
+            if(!_this->settings.calculateDistances)
+            {
+                style::beginDisabled();
+            }
+
+            ImGui::InputFloat("Lat", &_this->settings.lat);
+            ImGui::InputFloat("Lon", &_this->settings.lon);
+            if (!_this->settings.calculateDistances)
+            {
+                style::endDisabled();
+            }
+            ImGui::TreePop();
+        }
         if (_this->errorLoading)
         {
             ImGui::OpenPopup("Failed to download database!");
@@ -232,18 +249,19 @@ private:
                     liveStations.push_back(station);
                 }
             }
-
+            std::sort(liveStations.begin(), liveStations.end(), [_this](Station a, Station b)
+                      { return distanceEarth(a.lat, a.lon, _this->settings.lat, _this->settings.lon) < distanceEarth(b.lat, b.lon, _this->settings.lat, _this->settings.lon); });
             // There are no live stations
             if(!liveStations.size()) continue;
 
             const std::string text = liveStations[0].name;
-            draw(text, frequency * 1000, [&liveStations,frequency]()
+            draw(text, frequency * 1000, [&liveStations,_this,frequency]()
                 {
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(0.5,0.5,1,1), "Live stations on %ikHz:", frequency);
                     for (const auto station : liveStations)
                     {
-                        ImGui::Text("%s\t[%i - %i]\t%ikm", station.name.c_str(), station.utcMin, station.utcMax, 0);
+                        ImGui::Text("%s\t[%i - %i]\t%ikm", station.name.c_str(), station.utcMin, station.utcMax, (int)distanceEarth(station.lat,station.lon,_this->settings.lat,_this->settings.lon));
                     }
                     ImGui::Separator();
                 }
