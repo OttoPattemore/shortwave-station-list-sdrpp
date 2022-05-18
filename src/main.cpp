@@ -261,7 +261,15 @@ private:
                     ImGui::TextColored(ImVec4(0.5,0.5,1,1), "Live stations on %ikHz:", frequency);
                     for (const auto station : liveStations)
                     {
-                        ImGui::Text("%s\t[%i - %i]\t%ikm", station.name.c_str(), station.utcMin, station.utcMax, (int)distanceEarth(station.lat,station.lon,_this->settings.lat,_this->settings.lon));
+                        ImGui::Text("%s", station.name.c_str());
+                        ImGui::SameLine();
+                        ImGui::TextColored(ImVec4(0.5, 0.9, 0.5, 1), "[%i - %i]", station.utcMin, station.utcMax);
+                        bool hasLocation = ((station.lat != 0) || (station.lon != 0));
+                        if (_this->settings.calculateDistances && hasLocation)
+                        {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(0.8, 0.5, 0.5, 1), "%ikm", (int)distanceEarth(station.lat,station.lon,_this->settings.lat,_this->settings.lon));
+                        }
                     }
                     ImGui::Separator();
                 }
