@@ -47,6 +47,16 @@ int getUTCMin()
     std::tm *now_tm = std::gmtime(&now);
     return now_tm->tm_min;
 }
+
+struct Settings
+{
+    bool useLocalHost = false;
+    bool showStations = true;
+
+    bool calculateDistances;
+    float lat = 0;
+    float lon = 0;
+};
 class ShortwaveStationList : public ModuleManager::Instance
 {
 public:
@@ -62,7 +72,7 @@ public:
     void loadDatabase()
     {
         stations.clear();
-        std::string url = useLocalHost ? "http://localhost:8000/" : "https://ottopattemore.github.io/shortwave-station-list/";
+        std::string url = settings.useLocalHost ? "http://localhost:8000/" : "https://ottopattemore.github.io/shortwave-station-list/";
         loadList(url + "/db/eibi.json");
     }
     ~ShortwaveStationList()
@@ -141,17 +151,17 @@ private:
     {
         ShortwaveStationList * _this = (ShortwaveStationList *)ctx;
         ImGui::TextColored(ImVec4(0.5,0.9,0.5,1),"Current UTC Time: %02i:%02i", getUTCHour(),getUTCMin());
-        ImGui::Checkbox("Display on FFT", &_this->showStations);
-        if (ImGui::BeginCombo("Source", _this->useLocalHost ? "Local Host ( For testing )" : "Remote ( Default )"))
+        ImGui::Checkbox("Display on FFT", &_this->settings.showStations);
+        if (ImGui::BeginCombo("Source", _this->settings.useLocalHost ? "Local Host ( For testing )" : "Remote ( Default )"))
         {
             if (ImGui::Selectable("Remote ( Default )"))
             {
-                _this->useLocalHost = false;
+                _this->settings.useLocalHost = false;
                 _this->loadDatabase();
             }
             if (ImGui::Selectable("Local Host ( For testing )"))
             {
-                _this->useLocalHost = true;
+                _this->settings.useLocalHost = true;
                 _this->loadDatabase();
             }
             ImGui::EndCombo();
@@ -177,7 +187,11 @@ private:
     static void fftRedraw(ImGui::WaterFall::FFTRedrawArgs args, void *ctx)
     {
         ShortwaveStationList *_this = (ShortwaveStationList *)ctx;
-        if (!_this->showStations) return;
+
+        // Don't show stations
+        if (!_this->settings.showStations) return;
+
+        // Handler for display FFT marker
         std::function<void(std::string name, int freq, std::function<void()> tooltip)> draw = [&args](std::string name, int freq, std::function<void()> tooltip)
         {
             double centerXpos = args.min.x + std::round((freq - args.lowFreq) * args.freqToPixelRatio);
@@ -220,6 +234,8 @@ private:
                 args.window->DrawList->AddText(ImVec2(centerXpos - (nameSize.x / 2), args.min.y), IM_COL32(0, 0, 0, 255), name.c_str());
             }
         };
+        
+        
         for(const auto& f : _this->stations){
             const auto frequency = f.first;
             auto stations = f.second;
@@ -252,8 +268,9 @@ private:
             );
         }
     }
-    bool useLocalHost = false;
-    bool showStations = true;
+    
+    Settings settings;
+
     std::string name;
     bool enabled = true;
     EventHandler<ImGui::WaterFall::FFTRedrawArgs> fftRedrawHandler;
