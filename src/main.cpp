@@ -92,13 +92,13 @@ private:
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &list);
         size_t (*handler)(char *buffer, size_t itemSize, size_t nitems, void *ctx) = [](char *buffer, size_t itemSize, size_t nitems, void *ctx) -> size_t
         {
-            std::cout<<itemSize*nitems<<std::endl;
             size_t bytes = itemSize * nitems;
             std::string data;
             data.resize(bytes);
             memcpy(data.data(), buffer,bytes);
             ((std::string*)ctx)->append(data);
-            return bytes; };
+            return bytes;
+        };
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handler);
         CURLcode result  = curl_easy_perform(curl);
         // Handle errors
