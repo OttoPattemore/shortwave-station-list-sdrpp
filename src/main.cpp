@@ -133,8 +133,18 @@ private:
     static void menuHandler(void *ctx)
     {
         ShortwaveStationList * _this = (ShortwaveStationList *)ctx;
+        if(ImGui::IsKeyPressed(ImGuiKey_RightShift, false))
+        {
+            _this->settings.showStations = !_this->settings.showStations;
+        }
         ImGui::TextColored(ImVec4(0.5,0.9,0.5,1),"Current UTC Time: %02i:%02i", getUTCHour(),getUTCMin());
         ImGui::Checkbox("Display on FFT", &_this->settings.showStations);
+        if(ImGui::IsItemHovered())
+        {
+            ImGui::BeginTooltip();
+            ImGui::Text("Use Right Shift to toggle");
+            ImGui::EndTooltip();
+        }
         if (ImGui::BeginCombo("Source", _this->settings.useLocalHost ? "Local Host ( For testing )" : "Remote ( Default )"))
         {
             if (ImGui::Selectable("Remote ( Default )"))
