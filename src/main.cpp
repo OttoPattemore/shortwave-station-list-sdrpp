@@ -12,6 +12,8 @@
 #include <config.h>
 #include "utc.h"
 #include "distance.h"
+#include "remotes.h"
+#include "settings.h"
 SDRPP_MOD_INFO{
     /* Name:            */ "Shortwave Staton List",
     /* Description:     */ "Plugin to show data from shortwave-station-list in SDR++",
@@ -29,34 +31,36 @@ struct Station{
     int utcMin;
     int utcMax;
 };
-ConfigManager config;
 
-struct Settings
-{
-    bool useLocalHost = false;
-    bool showStations = true;
 
-    bool calculateDistances = false;
-    float lat = 0;
-    float lon = 0;
-};
 class ShortwaveStationList : public ModuleManager::Instance
 {
 public:
     ShortwaveStationList(std::string name)
     {
+        initSettings();
+        // GUI callbacks
         gui::menu.registerEntry(name, menuHandler, this, NULL);
-
         fftRedrawHandler.ctx = this;
         fftRedrawHandler.handler = fftRedraw;
         gui::waterfall.onFFTRedraw.bindHandler(&fftRedrawHandler);
+
+        // Init
+        
+        settings = loadSettings();
         loadDatabase();
     }
     void loadDatabase()
     {
         stations.clear();
-        std::string url = settings.useLocalHost ? "http://localhost:8000/" : "https://ottopattemore.github.io/shortwave-station-list/";
+
+        // Get remote URL
+        const std::string url = getRemoteURL(settings.useLocalHost);
+
+        // Fetch from remote
         loadList(url + "/db/eibi.json");
+
+
     }
     ~ShortwaveStationList()
     {
@@ -136,9 +140,13 @@ private:
         if(ImGui::IsKeyPressed(ImGuiKey_RightShift, false))
         {
             _this->settings.showStations = !_this->settings.showStations;
+            saveSettings(_this->settings);
         }
         ImGui::TextColored(ImVec4(0.5,0.9,0.5,1),"Current UTC Time: %02i:%02i", getUTCHour(),getUTCMin());
-        ImGui::Checkbox("Display on FFT", &_this->settings.showStations);
+        if(ImGui::Checkbox("Display on FFT", &_this->settings.showStations))
+        {
+            saveSettings(_this->settings);
+        }
         if(ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
@@ -150,11 +158,13 @@ private:
             if (ImGui::Selectable("Remote ( Default )"))
             {
                 _this->settings.useLocalHost = false;
+                saveSettings(_this->settings);
                 _this->loadDatabase();
             }
             if (ImGui::Selectable("Local Host ( For testing )"))
             {
                 _this->settings.useLocalHost = true;
+                saveSettings(_this->settings);
                 _this->loadDatabase();
             }
             ImGui::EndCombo();
@@ -167,8 +177,14 @@ private:
                 style::beginDisabled();
             }
 
-            ImGui::InputFloat("Lat", &_this->settings.lat);
-            ImGui::InputFloat("Lon", &_this->settings.lon);
+            if(ImGui::InputFloat("Lat", &_this->settings.lat))
+            {
+                saveSettings(_this->settings);
+            }
+            if(ImGui::InputFloat("Lon", &_this->settings.lon))
+            {
+                saveSettings(_this->settings);
+            }
             if (!_this->settings.calculateDistances)
             {
                 style::endDisabled();
@@ -298,10 +314,7 @@ private:
 
 MOD_EXPORT void _INIT_()
 {
-    json def = json({});
-    config.setPath(core::args["root"].s() + "/shortwave_station_list.json");
-    config.load(def);
-    config.enableAutoSave();
+
 }
 
 MOD_EXPORT ModuleManager::Instance *_CREATE_INSTANCE_(std::string name)
@@ -316,5 +329,4 @@ MOD_EXPORT void _DELETE_INSTANCE_(void *instance)
 
 MOD_EXPORT void _END_()
 {
-    // Nothing either
 }
