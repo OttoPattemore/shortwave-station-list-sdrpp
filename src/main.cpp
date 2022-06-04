@@ -32,9 +32,34 @@ struct Station{
     int utcMax;
 };
 
-bool isStationLive(Station station)
+bool isStationLive(Station station, int time = getUTCTime())
 {
-    return ((getUTCTime() > station.utcMin) && (getUTCTime() < station.utcMax)) || ((getUTCTime() < station.utcMin && getUTCTime() < station.utcMax) && (station.utcMax < station.utcMax));
+    /*
+        NOTE: This will crash and burn if there are different broadcast times per week day.
+    */
+
+    if (station.utcMin < station.utcMax)
+    {
+        // This station does not cross 24-hour time.
+        return ((time > station.utcMin) && (time < station.utcMax));
+    }
+    else
+    {
+
+        /*
+            We'll split the station into two.
+            Then check each one individually.
+        */
+
+        // Split it into two broadcasts
+        Station firstDay = station;
+        firstDay.utcMax = 24000;
+        Station secondDay = station;
+        secondDay.utcMin = 0;
+
+        // Check each individually
+        return isStationLive(firstDay, time) || isStationLive(secondDay, time);
+    }
 }
 
 
@@ -355,10 +380,35 @@ private:
     std::unordered_map<int, std::vector<Station>> stations;
     bool errorLoading = false;
 };
-
+void runTests()
+{
+    const std::function<void(std::string, std::function<bool()>)> CHECK = [](std::string name, std::function<bool()> test)
+    {
+        if(test())
+        {
+            spdlog::info("[ Shortwave Station List ] ✅ {} passed!", name);
+        }
+        else
+        {
+            spdlog::error("[ Shortwave Station List ] ❌ {} failed!");
+        }
+    };
+    CHECK("UTC Same day", [](){
+        Station testStation;
+        testStation.utcMin = 1000;
+        testStation.utcMax = 5000;
+        return isStationLive(testStation,4000) && (!isStationLive(testStation,6000));
+    });
+    CHECK("UTC Multiple day", [](){
+        Station testStation;
+        testStation.utcMin = 1800;
+        testStation.utcMax = 500;
+        return isStationLive(testStation, 400) && isStationLive(testStation, 1900) && (!isStationLive(testStation,1700)) && (!isStationLive(testStation,600)); 
+    });
+}
 MOD_EXPORT void _INIT_()
 {
-
+    runTests();
 }
 
 MOD_EXPORT ModuleManager::Instance *_CREATE_INSTANCE_(std::string name)
