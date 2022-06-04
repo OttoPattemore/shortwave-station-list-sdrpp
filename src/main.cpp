@@ -32,6 +32,11 @@ struct Station{
     int utcMax;
 };
 
+bool isStationLive(Station station)
+{
+    return ((getUTCTime() > station.utcMin) && (getUTCTime() < station.utcMax)) || ((getUTCTime() < station.utcMin && getUTCTime() < station.utcMax) && (station.utcMax < station.utcMax));
+}
+
 
 class ShortwaveStationList : public ModuleManager::Instance
 {
@@ -208,6 +213,44 @@ private:
             }
             ImGui::EndPopup();
         }
+        /*if (ImGui::Button("Search for station##button"))
+        {
+            ImGui::OpenPopup("Search for station");
+        }
+        ImGui::SetNextWindowSize(ImVec2(800,600));
+        if(ImGui::BeginPopupModal("Search for station",nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
+            static char searchTerm[100];
+            ImGui::InputText("Search", searchTerm,100);
+            if(ImGui::BeginTable("stations",2))
+            {
+                for (const auto &frequency : _this->stations)
+                {
+                    for (const auto &station : frequency.second)
+                    {
+                        std::string lowerName = station.name;
+                        std::string lowerSearch = searchTerm;
+
+                        // Convert to lower
+                        std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),[](unsigned char c) { return std::tolower(c); });
+
+                        std::transform(lowerSearch.begin(), lowerSearch.end(), lowerSearch.begin(), [](unsigned char c) { return std::tolower(c); });
+
+                        if (lowerName.find(lowerSearch) == std::string::npos) continue;
+                        if(!isStationLive(station)) continue;
+                        ImGui::TableNextRow();
+                        ImGui::Text("%s",station.name.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%ikHz",station.frequency);
+                        ImGui::TableNextColumn();
+                    }
+                }
+                ImGui::EndTabBar();
+            }
+            if ( ImGui::Button("Close") ){
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }*/
     }
     static void fftRedraw(ImGui::WaterFall::FFTRedrawArgs args, void *ctx)
     {
@@ -271,7 +314,8 @@ private:
             for(const auto station : stations){
 
                 // Check time
-                if ( (getUTCTime() > station.utcMin) && (getUTCTime() < station.utcMax) ){
+                if (isStationLive(station))
+                {
                     liveStations.push_back(station);
                 }
             }
