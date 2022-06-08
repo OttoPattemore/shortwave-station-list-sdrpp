@@ -6,7 +6,6 @@
 #include <gui/gui.h>
 
 #include <fstream>
-#include <curl/curl.h>
 #include <iostream>
 #include <json.hpp>
 #include <config.h>
@@ -21,16 +20,6 @@ SDRPP_MOD_INFO{
     /* Version:         */ 0, 1, 0,
     /* Max instances    */ 1};
 
-struct Station{
-    std::string name;
-    std::string notes;
-    int power;
-    int frequency;
-    float lat;
-    float lon;
-    int utcMin;
-    int utcMax;
-};
 
 bool isStationLive(Station station, int time = getUTCTime())
 {
@@ -78,22 +67,11 @@ public:
         // Init
         
         settings = loadSettings();
-        loadDatabase();
-    }
-    void loadDatabase()
-    {
-        stations.clear();
-
-        // Get remote URL
-        const std::string url = getRemoteURL(settings.useLocalHost);
-
-        // Fetch from remote
-        loadList(url + "/db/eibi.json");
-
-
+        source = new RemoteSource(getRemoteURL(settings.useLocalHost)+"/db/eibi.json");
     }
     ~ShortwaveStationList()
     {
+        delete source;
     }
 
     void postInit() {}
@@ -113,56 +91,7 @@ public:
 
 private:
     void loadList(std::string url){
-        std::string list;
-
-        CURL *curl = curl_easy_init();
-        if (!curl)
-        {
-            spdlog::error("[ Shortwave Station List ] Failed to init curl!");
-            return;
-        }
-        // Download data
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &list);
-        size_t (*handler)(char *buffer, size_t itemSize, size_t nitems, void *ctx) = [](char *buffer, size_t itemSize, size_t nitems, void *ctx) -> size_t
-        {
-            size_t bytes = itemSize * nitems;
-            std::string data;
-            data.resize(bytes);
-            memcpy(data.data(), buffer,bytes);
-            ((std::string*)ctx)->append(data);
-            return bytes;
-        };
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, handler);
-        CURLcode result  = curl_easy_perform(curl);
-        // Handle errors
-        if(result != CURLE_OK){
-            errorLoading = true;
-            spdlog::error("[ Shortwave Station List ] Failed to load {}",url);
-        }
-
-        // Once the list is download decode the json
-        nlohmann::json database = nullptr;
-        try{
-            database = json::parse(list);
-        }catch(nlohmann::json::parse_error){
-            errorLoading = true;
-        }
-        for( const auto station : database["stations"] ){
-            Station s;
-            s.frequency = station["frequency"].get<int>();
-            s.name = station["name"];
-            s.power = station["power"].get<int>();
-            s.notes = station["notes"];
-            s.lat = station["location"][0].get<float>();
-            s.lon = station["location"][1].get<float>();
-            s.utcMin = std::stof(station["utc_start"].get<std::string>());
-            s.utcMax = std::stof(station["utc_end"].get<std::string>());
-            stations[s.frequency].push_back(s);
-        }
-        spdlog::info("Fetch list: {}", url);
-        // Cleanup
-        curl_easy_cleanup(curl);
+        
     }
     static void menuHandler(void *ctx)
     {
@@ -189,13 +118,15 @@ private:
             {
                 _this->settings.useLocalHost = false;
                 saveSettings(_this->settings);
-                _this->loadDatabase();
+                delete _this->source;
+                _this->source = new RemoteSource(getRemoteURL(_this->settings.useLocalHost));
             }
             if (ImGui::Selectable("Local Host ( For testing )"))
             {
                 _this->settings.useLocalHost = true;
                 saveSettings(_this->settings);
-                _this->loadDatabase();
+                delete _this->source;
+                _this->source = new RemoteSource(getRemoteURL(_this->settings.useLocalHost));
             }
             ImGui::EndCombo();
         }
@@ -244,61 +175,7 @@ private:
             }
             ImGui::TreePop();
         }
-        if (_this->errorLoading)
-        {
-            ImGui::OpenPopup("Failed to download database!");
-        }
-        ImGui::SetNextWindowSize(ImVec2(600,200));
-        if (ImGui::BeginPopupModal("Failed to download database!", &_this->errorLoading, ImGuiWindowFlags_NoMove))
-        {
-            ImGui::TextColored(ImVec4(1, 0.2, 0.2, 1) ,"Failed to download database!");
-            ImGui::Text("1. Check your network connection");
-            ImGui::Text("2. Check you are using an up to date plugin");
-            if(ImGui::Button("Close", ImVec2(ImGui::GetContentRegionAvail().x,0)))
-            {
-                _this->errorLoading = false;
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-        /*if (ImGui::Button("Search for station##button"))
-        {
-            ImGui::OpenPopup("Search for station");
-        }
-        ImGui::SetNextWindowSize(ImVec2(800,600));
-        if(ImGui::BeginPopupModal("Search for station",nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)){
-            static char searchTerm[100];
-            ImGui::InputText("Search", searchTerm,100);
-            if(ImGui::BeginTable("stations",2))
-            {
-                for (const auto &frequency : _this->stations)
-                {
-                    for (const auto &station : frequency.second)
-                    {
-                        std::string lowerName = station.name;
-                        std::string lowerSearch = searchTerm;
 
-                        // Convert to lower
-                        std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),[](unsigned char c) { return std::tolower(c); });
-
-                        std::transform(lowerSearch.begin(), lowerSearch.end(), lowerSearch.begin(), [](unsigned char c) { return std::tolower(c); });
-
-                        if (lowerName.find(lowerSearch) == std::string::npos) continue;
-                        if(!isStationLive(station)) continue;
-                        ImGui::TableNextRow();
-                        ImGui::Text("%s",station.name.c_str());
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%ikHz",station.frequency);
-                        ImGui::TableNextColumn();
-                    }
-                }
-                ImGui::EndTabBar();
-            }
-            if ( ImGui::Button("Close") ){
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }*/
     }
     static void fftRedraw(ImGui::WaterFall::FFTRedrawArgs args, void *ctx)
     {
@@ -306,7 +183,6 @@ private:
 
         // Don't show stations
         if (!_this->settings.showStations) return;
-
         // Handler for display FFT marker
         std::function<void(std::string name, int freq, std::function<void()> tooltip)> draw = [_this,&args](std::string name, int freq, std::function<void()> tooltip)
         {
@@ -355,7 +231,7 @@ private:
         };
         
         
-        for(const auto& f : _this->stations){
+        for(const auto& f : _this->source->getStations()){
             const auto frequency = f.first;
             auto stations = f.second;
 
@@ -400,8 +276,7 @@ private:
     std::string name;
     bool enabled = true;
     EventHandler<ImGui::WaterFall::FFTRedrawArgs> fftRedrawHandler;
-    std::unordered_map<int, std::vector<Station>> stations;
-    bool errorLoading = false;
+    DataSource* source = nullptr;
 
     public:
         Settings settings;
