@@ -1,10 +1,7 @@
 #include "remotes.h"
 #include <curl/curl.h>
 #include <core.h>
-std::string getRemoteURL(bool local)
-{
-    return local ? "http://localhost:8000/" : "https://ottopattemore.github.io/shortwave-station-list/";
-}
+#include <fstream>
 
 RemoteSource::RemoteSource(const std::string &remote)
 {
@@ -71,4 +68,46 @@ std::unordered_map<int, std::vector<Station>> &RemoteSource::getStations()
 bool RemoteSource::isReadOnly()
 {
     return true;
+}
+
+LocalSource::LocalSource(const std::filesystem::path& path)
+{
+    // Load local database
+    std::ifstream inputFile(path);
+    json database = nullptr;
+    try
+    {
+        database = json::parse(inputFile);
+    }
+    catch (nlohmann::json::parse_error e)
+    {
+        spdlog::error("Error loading database: {}\n\t{}", path.c_str(), e.what());
+        return;
+    }
+
+    for (const auto station : database["stations"])
+    {
+        Station s;
+        s.frequency = station["frequency"].get<int>();
+        s.name = station["name"];
+        s.power = station["power"].get<int>();
+        s.notes = station["notes"];
+        s.lat = station["location"][0].get<float>();
+        s.lon = station["location"][1].get<float>();
+        s.utcMin = std::stof(station["utc_start"].get<std::string>());
+        s.utcMax = std::stof(station["utc_end"].get<std::string>());
+        m_Stations[s.frequency].push_back(s);
+    }
+    spdlog::info("[ Shortwave Station List ] Loaded from local source!");
+}
+StationList& LocalSource::getStations()
+{
+    return m_Stations;
+}
+bool LocalSource::isReadOnly()
+{
+    return false;
+}
+void LocalSource::save()
+{
 }

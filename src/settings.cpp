@@ -22,7 +22,8 @@ Settings loadSettings()
         loadedSettings.lon = config.conf["lon"].get<float>();
     if (config.conf.contains("showStations"))
         loadedSettings.showStations = config.conf["showStations"].get<bool>();
-
+    if(config.conf.contains("useLocalSource"))
+        loadedSettings.showStations = config.conf["useLocalSource"].get<bool>();
     if (config.conf.contains("markerBG_R"))
         loadedSettings.displayR = config.conf["markerBG_R"].get<float>();
     if (config.conf.contains("markerBG_G"))
@@ -40,7 +41,8 @@ Settings loadSettings()
         loadedSettings.markerTextColorB = config.conf["markerTextColor_B"].get<float>();
     if (config.conf.contains("markerTextColor_A"))
         loadedSettings.markerTextColorA = config.conf["markerTextColor_A"].get<float>();
-
+    if(config.conf.contains("localSourceFile"))
+        loadedSettings.localSourceFile =config.conf["localSourceFile"].get<std::string>();
     config.release(true);
     return loadedSettings;
 }
@@ -51,7 +53,7 @@ void saveSettings(const Settings &settings)
     config.conf["lat"] = settings.lat;
     config.conf["lon"] = settings.lon;
     config.conf["showStations"] = settings.showStations;
-    config.conf["useLocalHost"] = settings.useLocalHost;
+    config.conf["useLocalSource"] = settings.useLocalSource;
     config.conf["markerBG_R"] = settings.displayR;
     config.conf["markerBG_G"] = settings.displayG;
     config.conf["markerBG_B"] = settings.displayB;
@@ -60,6 +62,7 @@ void saveSettings(const Settings &settings)
     config.conf["markerTextColor_G"] = settings.markerTextColorG;
     config.conf["markerTextColor_B"] = settings.markerTextColorB;
     config.conf["markerTextColor_A"] = settings.markerTextColorA;
+    config.conf["localSourceFile"] = settings.localSourceFile;
     config.release(true);
     config.save();
 }

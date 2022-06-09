@@ -1,8 +1,8 @@
 #pragma once
-
+#include <string>
 struct Settings
 {
-    bool useLocalHost = false;
+    bool useLocalSource = false;
     bool showStations = true;
 
     bool calculateDistances = false;
@@ -16,6 +16,7 @@ struct Settings
     float markerTextColorG = 1;
     float markerTextColorB = 1;
     float markerTextColorA = 1;
+    std::string localSourceFile = "";
 };
 void initSettings();
 Settings loadSettings();

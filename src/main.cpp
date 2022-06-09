@@ -13,6 +13,7 @@
 #include "distance.h"
 #include "remotes.h"
 #include "settings.h"
+#include "gui/widgets/file_select.h"
 SDRPP_MOD_INFO{
     /* Name:            */ "Shortwave Staton List",
     /* Description:     */ "Plugin to show data from shortwave-station-list in SDR++",
@@ -55,7 +56,7 @@ bool isStationLive(Station station, int time = getUTCTime())
 class ShortwaveStationList : public ModuleManager::Instance
 {
 public:
-    ShortwaveStationList(std::string name)
+    ShortwaveStationList(std::string name) : m_LocalSourceLocation("")
     {
         initSettings();
         // GUI callbacks
@@ -67,7 +68,18 @@ public:
         // Init
         
         settings = loadSettings();
-        source = new RemoteSource(getRemoteURL(settings.useLocalHost)+"/db/eibi.json");
+        reloadSource();
+    }
+    void reloadSource()
+    {
+        if(settings.useLocalSource && std::filesystem::exists(settings.localSourceFile))
+        {
+            source = new LocalSource(settings.localSourceFile);
+        }
+        else
+        {
+            source = new RemoteSource("https://ottopattemore.github.io/shortwave-station-list/db/eibi.json");
+        }
     }
     ~ShortwaveStationList()
     {
@@ -112,23 +124,21 @@ private:
             ImGui::Text("Use Right Shift to toggle");
             ImGui::EndTooltip();
         }
-        if (ImGui::BeginCombo("Source", _this->settings.useLocalHost ? "Local Host ( For testing )" : "Remote ( Default )"))
+        if(ImGui::Checkbox("Use Local Source", &_this->settings.useLocalSource))
         {
-            if (ImGui::Selectable("Remote ( Default )"))
+            _this->reloadSource();
+        }
+        if(_this->settings.useLocalSource)
+        {
+            if(_this->m_LocalSourceLocation.render("##localsource_selector"))
             {
-                _this->settings.useLocalHost = false;
-                saveSettings(_this->settings);
-                delete _this->source;
-                _this->source = new RemoteSource(getRemoteURL(_this->settings.useLocalHost));
+                if(_this->m_LocalSourceLocation.pathIsValid())
+                {
+                    _this->settings.localSourceFile = _this->m_LocalSourceLocation.path;
+                    saveSettings(_this->settings);
+                    _this->reloadSource();
+                }
             }
-            if (ImGui::Selectable("Local Host ( For testing )"))
-            {
-                _this->settings.useLocalHost = true;
-                saveSettings(_this->settings);
-                delete _this->source;
-                _this->source = new RemoteSource(getRemoteURL(_this->settings.useLocalHost));
-            }
-            ImGui::EndCombo();
         }
         if(ImGui::TreeNode("Location"))
         {
@@ -155,22 +165,18 @@ private:
         if(ImGui::TreeNode("Options")){
             if(ImGui::ColorEdit3("Marker color", &_this->settings.displayR))
             {
-                _this->settings.useLocalHost = true;
                 saveSettings(_this->settings);
             }
             if(ImGui::SliderFloat("Marker Alpha", &_this->settings.displayA,0,1))
             {
-                _this->settings.useLocalHost = true;
                 saveSettings(_this->settings);
             }
             if(ImGui::ColorEdit3("Marker text color", &_this->settings.markerTextColorR))
             {
-                _this->settings.useLocalHost = true;
                 saveSettings(_this->settings);
             }
             if(ImGui::SliderFloat("Marker text Alpha", &_this->settings.markerTextColorA, 0, 1))
             {
-                _this->settings.useLocalHost = true;
                 saveSettings(_this->settings);
             }
             ImGui::TreePop();
@@ -277,7 +283,7 @@ private:
     bool enabled = true;
     EventHandler<ImGui::WaterFall::FFTRedrawArgs> fftRedrawHandler;
     DataSource* source = nullptr;
-
+    FileSelect m_LocalSourceLocation;
     public:
         Settings settings;
 };
