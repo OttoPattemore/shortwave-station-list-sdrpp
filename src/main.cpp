@@ -167,15 +167,11 @@ private:
             {
                 saveSettings(_this->settings);
             }
-            if(ImGui::SliderFloat("Marker Alpha", &_this->settings.displayA,0,1))
-            {
-                saveSettings(_this->settings);
-            }
             if(ImGui::ColorEdit3("Marker text color", &_this->settings.markerTextColorR))
             {
                 saveSettings(_this->settings);
             }
-            if(ImGui::SliderFloat("Marker text Alpha", &_this->settings.markerTextColorA, 0, 1))
+            if(ImGui::Checkbox("Fade when zoomed out", &_this->settings.fadeWhenZoomed))
             {
                 saveSettings(_this->settings);
             }
@@ -192,11 +188,14 @@ private:
         // Handler for display FFT marker
         std::function<void(std::string name, int freq, std::function<void()> tooltip)> draw = [_this,&args](std::string name, int freq, std::function<void()> tooltip)
         {
+            float opacity = 1 - ((gui::waterfall.getViewBandwidth() / gui::waterfall.getBandwidth())*2);
+            if(!_this->settings.fadeWhenZoomed)
+                opacity = 1;
             double centerXpos = args.min.x + std::round((freq - args.lowFreq) * args.freqToPixelRatio);
 
             if (freq >= args.lowFreq && freq <= args.highFreq)
             {
-                const ImVec4 bgColor = ImVec4(_this->settings.displayR, _this->settings.displayG, _this->settings.displayB, _this->settings.displayA);
+                const ImVec4 bgColor = ImVec4(_this->settings.displayR, _this->settings.displayG, _this->settings.displayB, opacity);
                 args.window->DrawList->AddLine(ImVec2(centerXpos, args.min.y), ImVec2(centerXpos, args.max.y), ImGui::ColorConvertFloat4ToU32(bgColor));
             }
 
@@ -226,12 +225,12 @@ private:
             }
             if (clampedRectMax.x - clampedRectMin.x > 0)
             {
-                const ImVec4 bgColor = ImVec4(_this->settings.displayR,_this->settings.displayG,_this->settings.displayB,_this->settings.displayA);
+                const ImVec4 bgColor = ImVec4(_this->settings.displayR,_this->settings.displayG,_this->settings.displayB,opacity);
                 args.window->DrawList->AddRectFilled(clampedRectMin, clampedRectMax, ImGui::ColorConvertFloat4ToU32(bgColor));
             }
             if (rectMin.x >= args.min.x && rectMax.x <= args.max.x)
             {
-                const ImVec4 textColor = ImVec4(_this->settings.markerTextColorR, _this->settings.markerTextColorB, _this->settings.markerTextColorB, _this->settings.markerTextColorA);
+                const ImVec4 textColor = ImVec4(_this->settings.markerTextColorR, _this->settings.markerTextColorB, _this->settings.markerTextColorB, opacity);
                 args.window->DrawList->AddText(ImVec2(centerXpos - (nameSize.x / 2), args.min.y), ImGui::ColorConvertFloat4ToU32(textColor), name.c_str());
             }
         };

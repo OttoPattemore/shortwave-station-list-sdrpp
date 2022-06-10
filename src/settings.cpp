@@ -30,8 +30,6 @@ Settings loadSettings()
         loadedSettings.displayG = config.conf["markerBG_G"].get<float>();
     if (config.conf.contains("markerBG_B"))
         loadedSettings.displayB = config.conf["markerBG_B"].get<float>();
-    if (config.conf.contains("markerBG_A"))
-        loadedSettings.displayA = config.conf["markerBG_A"].get<float>();
 
     if (config.conf.contains("markerTextColor_R"))
         loadedSettings.markerTextColorR = config.conf["markerTextColor_R"].get<float>();
@@ -39,10 +37,10 @@ Settings loadSettings()
         loadedSettings.markerTextColorG = config.conf["markerTextColor_G"].get<float>();
     if (config.conf.contains("markerTextColor_B"))
         loadedSettings.markerTextColorB = config.conf["markerTextColor_B"].get<float>();
-    if (config.conf.contains("markerTextColor_A"))
-        loadedSettings.markerTextColorA = config.conf["markerTextColor_A"].get<float>();
     if(config.conf.contains("localSourceFile"))
         loadedSettings.localSourceFile =config.conf["localSourceFile"].get<std::string>();
+    if(config.conf.contains("fadeWhenZoomed"))
+        loadedSettings.showStations = config.conf["fadeWhenZoomed"].get<bool>();
     config.release(true);
     return loadedSettings;
 }
@@ -57,12 +55,11 @@ void saveSettings(const Settings &settings)
     config.conf["markerBG_R"] = settings.displayR;
     config.conf["markerBG_G"] = settings.displayG;
     config.conf["markerBG_B"] = settings.displayB;
-    config.conf["markerBG_A"] = settings.displayA;
     config.conf["markerTextColor_R"] = settings.markerTextColorR;
     config.conf["markerTextColor_G"] = settings.markerTextColorG;
     config.conf["markerTextColor_B"] = settings.markerTextColorB;
-    config.conf["markerTextColor_A"] = settings.markerTextColorA;
     config.conf["localSourceFile"] = settings.localSourceFile;
+    config.conf["fadeWhenZoomed"] = settings.fadeWhenZoomed;
     config.release(true);
     config.save();
 }
