@@ -79,7 +79,7 @@ public:
         }
         else
         {
-            source = new RemoteSource("https://ottopattemore.github.io/shortwave-station-list/db/eibi.json");
+            source = new RemoteSource("https://raw.githubusercontent.com/OttoPattemore/shortwave-station-list/main/db/eibi.json");
         }
     }
     ~ShortwaveStationList()
