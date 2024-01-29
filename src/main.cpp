@@ -5,6 +5,7 @@
 #include <module.h>
 #include <gui/gui.h>
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <json.hpp>
@@ -15,7 +16,7 @@
 #include "settings.h"
 #include "gui/widgets/file_select.h"
 SDRPP_MOD_INFO{
-    /* Name:            */ "Shortwave Staton List",
+    /* Name:            */ "Shortwave Station List",
     /* Description:     */ "Plugin to show data from shortwave-station-list in SDR++",
     /* Author:          */ "Otto Pattemore",
     /* Version:         */ 0, 1, 0,
