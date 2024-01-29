@@ -8,6 +8,8 @@ endif()
 
 file(GLOB_RECURSE SRC "*.cpp")
 
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+
 add_library(shortwave_station_list_sdrpp SHARED ${SRC})
 
 target_link_libraries(shortwave_station_list_sdrpp PRIVATE sdrpp_core)
