@@ -293,11 +293,11 @@ void runTests()
     {
         if(test())
         {
-            spdlog::info("[ Shortwave Station List ] ✅ {} passed!", name);
+            flog::info("[ Shortwave Station List ] ✅ {} passed!", name);
         }
         else
         {
-            spdlog::error("[ Shortwave Station List ] ❌ {} failed!");
+            flog::error("[ Shortwave Station List ] ❌ {} failed!");
         }
     };
     CHECK("UTC Same day", [](){

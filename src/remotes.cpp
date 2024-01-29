@@ -10,7 +10,7 @@ RemoteSource::RemoteSource(const std::string &remote)
     CURL *curl = curl_easy_init();
     if (!curl)
     {
-        spdlog::error("[ Shortwave Station List ] Failed to init curl!");
+        flog::error("[ Shortwave Station List ] Failed to init curl!");
         return;
     }
     // Download data
@@ -30,7 +30,7 @@ RemoteSource::RemoteSource(const std::string &remote)
     // Handle errors
     if (result != CURLE_OK)
     {
-        spdlog::error("[ Shortwave Station List ] Failed to load {}", remote);
+        flog::error("[ Shortwave Station List ] Failed to load {}", remote);
     }
 
     // Once the list is download decode the json
@@ -41,7 +41,7 @@ RemoteSource::RemoteSource(const std::string &remote)
     }
     catch (nlohmann::json::parse_error e)
     {
-        spdlog::error("Error passing json from remote: {} \n\t{}",remote, e.what());
+        flog::error("Error passing json from remote: {} \n\t{}",remote, e.what());
     }
     for (const auto station : database["stations"])
     {
@@ -56,7 +56,7 @@ RemoteSource::RemoteSource(const std::string &remote)
         s.utcMax = std::stof(station["utc_end"].get<std::string>());
         m_Stations[s.frequency].push_back(s);
     }
-    spdlog::info("Fetch list: {}", remote);
+    flog::info("Fetch list: {}", remote);
 
     // Cleanup
     curl_easy_cleanup(curl);
@@ -81,7 +81,7 @@ LocalSource::LocalSource(const std::filesystem::path& path)
     }
     catch (nlohmann::json::parse_error e)
     {
-        spdlog::error("Error loading database: {}\n\t{}", path.c_str(), e.what());
+        flog::error("Error loading database: {}\n\t{}", path.c_str(), e.what());
         return;
     }
 
@@ -98,7 +98,7 @@ LocalSource::LocalSource(const std::filesystem::path& path)
         s.utcMax = std::stof(station["utc_end"].get<std::string>());
         m_Stations[s.frequency].push_back(s);
     }
-    spdlog::info("[ Shortwave Station List ] Loaded from local source!");
+    flog::info("[ Shortwave Station List ] Loaded from local source!");
 }
 StationList& LocalSource::getStations()
 {
