@@ -3,7 +3,7 @@ project(shortwave_station_list_sdrpp)
 
 find_package(CURL)
 if(NOT ${CURL_FOUND})
-    message(FATAL_ERROR "Could not find libcurl4 dev packade (install libcurl4-gnutls-dev or libcurl4-openssl-dev)")
+    message(FATAL_ERROR "Could not find libcurl4 dev package (install libcurl4-gnutls-dev or libcurl4-openssl-dev)")
 endif()
 
 file(GLOB_RECURSE SRC "*.cpp")
