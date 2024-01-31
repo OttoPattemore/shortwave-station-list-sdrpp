@@ -5,6 +5,7 @@
 #include <module.h>
 #include <gui/gui.h>
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <json.hpp>
@@ -15,7 +16,7 @@
 #include "settings.h"
 #include "gui/widgets/file_select.h"
 SDRPP_MOD_INFO{
-    /* Name:            */ "Shortwave Staton List",
+    /* Name:            */ "Shortwave Station List",
     /* Description:     */ "Plugin to show data from shortwave-station-list in SDR++",
     /* Author:          */ "Otto Pattemore",
     /* Version:         */ 0, 1, 0,
@@ -78,7 +79,7 @@ public:
         }
         else
         {
-            source = new RemoteSource("https://ottopattemore.github.io/shortwave-station-list/db/eibi.json");
+            source = new RemoteSource("https://raw.githubusercontent.com/OttoPattemore/shortwave-station-list/main/db/eibi.json");
         }
     }
     ~ShortwaveStationList()
@@ -292,11 +293,11 @@ void runTests()
     {
         if(test())
         {
-            spdlog::info("[ Shortwave Station List ] ✅ {} passed!", name);
+            flog::info("[ Shortwave Station List ] ✅ {} passed!", name);
         }
         else
         {
-            spdlog::error("[ Shortwave Station List ] ❌ {} failed!");
+            flog::error("[ Shortwave Station List ] ❌ {} failed!");
         }
     };
     CHECK("UTC Same day", [](){
